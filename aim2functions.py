@@ -582,3 +582,177 @@ def perform_binary_gradient_boosting_classification(df, top_k=50):
     print('Top 200 features:')
     for i, feature in enumerate(feature_names[:200]):
         print(i+1, feature)
+
+def perform_logistic_regression(df):
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Convert text data to TF-IDF features
+    vectorizer =  TfidfVectorizer(analyzer='word', stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train a logistic regression model
+    lr = LogisticRegression(max_iter=1000)
+    param_grid = {'C': [0.1, 1, 10], 'penalty': ['l1', 'l2']}
+    clf = GridSearchCV(lr, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = clf.classes_
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=label_list)
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    print_classification_metrics(y_test, y_pred, target_names=label_list)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
+
+from sklearn.tree import DecisionTreeClassifier
+
+def perform_decision_tree_classification(df):
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Convert text data to TF-IDF features
+    vectorizer =  TfidfVectorizer(analyzer='word', stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train a decision tree classifier
+    dt = DecisionTreeClassifier(random_state=1)
+    param_grid = {'max_depth': [5, 10, 15, 20], 'criterion': ['gini', 'entropy']}
+    clf = GridSearchCV(dt, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = clf.classes_
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=label_list)
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    print_classification_metrics(y_test, y_pred, target_names=label_list)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
+
+
+from sklearn.ensemble import RandomForestClassifier
+
+def perform_random_forest_classification(df):
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Convert text data to TF-IDF features
+    vectorizer =  TfidfVectorizer(analyzer='word', stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train a random forest classifier
+    rf = RandomForestClassifier(random_state=1)
+    param_grid = {'n_estimators': [10, 50, 100], 'max_depth': [10, 20, 30], 'criterion': ['gini', 'entropy']}
+    clf = GridSearchCV(rf, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = clf.classes_
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=label_list)
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    print_classification_metrics(y_test, y_pred, target_names=label_list)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
+
+from sklearn.ensemble import GradientBoostingClassifier
+
+def perform_gradient_boosting_classification(df):
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Convert text data to TF-IDF features
+    vectorizer =  TfidfVectorizer(analyzer='word',stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train a gradient boosting classifier
+    gbm = GradientBoostingClassifier()
+    param_grid = {'n_estimators': [100, 200, 300], 'learning_rate': [0.1, 0.05, 0.01], 'max_depth': [3, 4, 5]}
+    clf = GridSearchCV(gbm, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = clf.classes_
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=label_list)
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    print_classification_metrics(y_test, y_pred, target_names=label_list)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
