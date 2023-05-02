@@ -547,7 +547,7 @@ def perform_binary_gradient_boosting_classification(df, top_k=50):
     y = df['Label'].values
 
     # Convert text data to TF-IDF features
-    vectorizer =  TfidfVectorizer(analyzer='word',vocabulary=selected_features, stop_words='english')
+    vectorizer =  TfidfVectorizer(analyzer='word', vocabulary=selected_features, stop_words='english')
     X = vectorizer.fit_transform(X)
     feature_names = vectorizer.get_feature_names()
 
