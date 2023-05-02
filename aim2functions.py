@@ -22,7 +22,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.linear_model import LogisticRegression
 from scipy.stats import chi2_contingency
-
+import graphviz 
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 from sklearn.manifold import TSNE
@@ -140,9 +140,7 @@ def preprocess_text(df):
     import nltk
 
     df = df[df['Message'].notna()]
-    replacements = {'Auto': 'A', 'Patient': 'P', 'Clinician': 'C'}
-
-    # replace the values in the specified column
+    replacements = {'Auto': 'A', 'Patient': 'P', 'Clinician': 'C', 'GPT': 'G', "EDA": "E"}
     df['Code'] = df['Code'].replace(replacements)
 
     sent_count,word_count= get_sentence_word_count(df['Message'].tolist())
@@ -756,3 +754,171 @@ def perform_gradient_boosting_classification(df):
     print('Top 200 features:')
     for i, feature in enumerate(feature_names[:200]):
         print(i+1, feature)
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV
+from xgboost import XGBClassifier
+
+from sklearn.preprocessing import LabelEncoder
+
+def perform_xgboost_classification(df):
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Encode the string labels into numeric labels
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+    # Convert text data to TF-IDF features
+    vectorizer = TfidfVectorizer(analyzer='word', stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train an XGBoost classifier
+    xgb = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    param_grid = {'n_estimators': [100, 200, 300], 'learning_rate': [0.1, 0.05, 0.01], 'max_depth': [3, 4, 5]}
+    clf = GridSearchCV(xgb, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = le.inverse_transform(np.unique(y_test))
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=np.unique(y))
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    print_classification_metrics(y_test, y_pred, target_names=label_list)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV
+from xgboost import XGBClassifier
+from sklearn.linear_model import LogisticRegression
+import xgboost
+
+def perform_binary_xgboost_classification(df, top_k=50):
+    # Define binary classification tasks
+    binary_tasks = {
+        'Info-giving vs. Non-Info-giving': ['Info Giving', 'Non-Info-giving'],
+        'Info-seeking vs. Non-info-seeking': ['Info Seeking', 'Non-info-seeking'],
+        'Emotion vs. non-emotion': ['Emotion', 'Non-emotion'],
+        'Partnership vs. non-partnership': ['Partnership', 'Non-partnership']
+    }
+    from sklearn.preprocessing import LabelEncoder
+
+    # Perform binary classification tasks
+    selected_features = []
+    for task_name, labels in binary_tasks.items():
+        print('Performing binary classification for task:', task_name)
+        X = df['Message'].values
+        y = df['Label'].apply(lambda x: labels[0] if x == labels[0] else labels[1]).values
+
+        # Encode labels to numeric values
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+        labels = le.classes_
+
+        # Rest of the code...
+        # Convert text data to TF-IDF features
+        vectorizer =  TfidfVectorizer(analyzer='word', stop_words='english')
+        X = vectorizer.fit_transform(X)
+
+        # Perform feature selection using chi-square test
+        selected_indices, p_values = chi2_feature_selection(X, y, top_k)
+        selected_features += [vectorizer.get_feature_names()[i] for i in selected_indices]
+        
+        # Split the data into training and testing sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+        # Train an XGBoost classifier
+        xgb = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+        param_grid = {'n_estimators': [100, 200, 300], 'learning_rate': [0.1, 0.05, 0.01], 'max_depth': [3, 4, 5]}
+        clf = GridSearchCV(xgb, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+        clf.fit(X_train[:, selected_indices], y_train)
+
+        # Evaluate the model on the testing set
+        y_pred = clf.predict(X_test[:, selected_indices])
+        print_classification_metrics(y_test, y_pred, target_names=labels)
+        print('Selected features:', ', '.join([vectorizer.get_feature_names()[i] for i in selected_indices]))
+        print('')
+
+    # Perform multi-class classification using selected features
+    top_k *= 4  # Increase the number of top features to include all selected features from binary classification tasks
+    selected_features = list(set(selected_features))[:top_k]
+    print('Performing multi-class classification using top {} features:'.format(top_k))
+    X = df['Message'].values
+    y = df['Label'].values
+
+    # Encode labels to numeric values
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+    label_list = le.classes_
+
+    # Convert text data to TF-IDF features
+    vectorizer =  TfidfVectorizer(analyzer='word', vocabulary=selected_features, stop_words='english')
+    X = vectorizer.fit_transform(X)
+    feature_names = vectorizer.get_feature_names()
+
+    # Split the data into training and testing sets
+        # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, stratify=y)
+
+    # Train an XGBoost classifier
+    xgb = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    param_grid = {'n_estimators': [100, 200, 300], 'learning_rate': [0.1, 0.05, 0.01], 'max_depth': [3, 4, 5]}
+    clf = GridSearchCV(xgb, param_grid=param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    clf.fit(X_train, y_train)
+    # Get the best estimator
+    best_clf = clf.best_estimator_
+
+    # Evaluate the model on the testing set
+    y_pred = clf.predict(X_test)
+
+    # Get the unique label names in the order of the classes
+    label_list = clf.classes_
+
+    # Generate the confusion matrix
+    cm = confusion_matrix(y_test, y_pred, labels=label_list)
+
+    # Create a heatmap of the confusion matrix with label names
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=label_list, yticklabels=label_list)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Multi-class Classification')
+    plt.show()
+
+    # Print classification report
+    print('Classification Report:')
+    string_labels = le.inverse_transform(np.unique(y_test))
+    print_classification_metrics(y_test, y_pred, target_names=string_labels)
+    print('Top 200 features:')
+    for i, feature in enumerate(feature_names[:200]):
+        print(i+1, feature)
+    return clf, selected_features
