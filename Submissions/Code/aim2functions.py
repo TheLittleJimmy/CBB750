@@ -1,3 +1,5 @@
+# Part3 Improvement
+## Author: Ji Qi
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
